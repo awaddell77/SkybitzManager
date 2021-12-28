@@ -1,0 +1,4 @@
+
+*.pyc
+test.sql
+credentials.json
