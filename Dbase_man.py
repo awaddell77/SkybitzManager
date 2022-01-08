@@ -8,9 +8,11 @@ class Dbase_man:
 	def close_conn(self):
 		self.conn.close()
 	
-	def exec_query(self, query):
+	def exec_query(self, query, retr = True ):
+		rows = [[]]
 		self.cursor.execute(query)
-		rows = self.cursor.fetchall()
+		if retr: rows = self.cursor.fetchall()
+		else: self.cursor.commit()
 		return rows
 
 

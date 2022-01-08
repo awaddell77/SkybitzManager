@@ -2,3 +2,8 @@
 *.pyc
 test.sql
 credentials.json
+*.txt
+*.json
+20220106T18-18-34.332792+00-00
+*.xlsx
+*.csv
