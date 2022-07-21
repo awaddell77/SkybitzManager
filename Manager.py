@@ -3,7 +3,7 @@ import datetime
 from datetime import timezone
 from loadJson import loadJson
 from Dict_lst import Dict_lst
-import Dictify
+import Dictify, sbcsv
 
 #in the future it will be a thread 
 creds = loadJson('credentials.json')
@@ -30,7 +30,7 @@ class Manager:
 	def run(self):
 		pass
 	def deactivate_ship_tos(self, fname):
-		ship_to_lst = Dict_lst(Dictify.Dictify(fname).main())
+		ship_to_lst = sbcsv.load_csv(fname)
 		deact_col = "De-activated in skybitz?"
 		ship_to_lst.add_crit(deact_col,'')
 		for i in range(0,len(ship_to_lst)):
@@ -38,7 +38,7 @@ class Manager:
 			res = self.db_conn.exec_query("SELECT SLCust_ShipToZip FROM SLCustomerShipTo WHERE  SLCust_ShipToId = \'{0}\' AND SLCust_ShipToZip IS NOT NULL AND SLCust_ShipToCity IS NOT NULL  ".format(temp['ShipToId']))
 			if not res: temp[deact_col] = "No. Could not be found"
 			else: 
-				customer_no, ship_to_code, corporate_id, company_id, division_id, user_id, module_id, s_datetime,inactive_region, inactive_territory = temp['CustomerId'], temp['ShipToId'],  '001', "000", "000","ADMINISTRATOR",4,'', 8,34
+				customer_no, ship_to_code, corporate_id, company_id, division_id, user_id, module_id, s_datetime,inactive_region, inactive_territory = temp['CustomerId'], temp['ShipToId'],  '001', "000", "000","ADMINISTRATOR",4,'', 9,35
 				self._deactivate_ship_to(customer_no, ship_to_code, corporate_id, company_id, division_id, user_id, module_id, s_datetime, inactive_region, inactive_territory)
 		ship_to_lst.export()
 		#print(ship_to_lst)
@@ -75,39 +75,29 @@ class Manager:
 		for i in range(0, len(products)):
 			product_q = "INSERT into SLCustomerShipToProductTaxFee ( SLSPTF_CorporateId, SLSPTF_CompanyId, SLSPTF_DivisionId, SLSPTF_CustomerId, SLSPTF_ShipToId, SLSPTF_ProductId, SLSPTF_TaxFeeProfileId ) " \
 			" VALUES ( \'{0}\', \'{1}\', \'{2}\', \'{3}\', \'{4}\', \'{5}\', null )".format(corporate_id, company_id, division_id, customer_no, ship_to_code, products[i] )
-			#print(product_q)
 			self._wrt_shipto_log(customer_no, ship_to_code, product_q)
 			self.db_conn.exec_query(product_q, False)
 		#deletes all associated records in the SLCustomerShipToProductPrice  
 		prod_price_delete_query = "DELETE FROM SLCustomerShipToProductPrice WHERE SLSPP_ShipToId = \'{0}\' AND SLSPP_CustomerID = \'{1}\'".format(ship_to_code, customer_no)
-		#print(prod_price_delete_query)
+		
 		self._wrt_shipto_log(customer_no, ship_to_code,prod_price_delete_query)
 		self.db_conn.exec_query(prod_price_delete_query, False)
 
 		#inserts new productprice rows with null values
 		for i in range(0, len(products)):
 			prod_price_insert_q = "INSERT INTO SLCustomerShipToProductPrice VALUES (\'{0}\',\'{1}\',\'{2}\',\'{3}\',\'{4}\',\'{5}\',NULL,0.0000,0.00)".format(corporate_id, company_id, division_id, ship_to_code, customer_no, products[i])
-			
-			#print(prod_price_insert_q, False)
 			self._wrt_shipto_log(customer_no, ship_to_code,prod_price_insert_q)
+			self.db_conn.exec_query(prod_price_insert_q, False)
+			
 		#get shiptoregions
 		shipto_regions = self._get_cust_shipto_regions(customer_no, ship_to_code)
 
 		shipto_region_delete_query = "DELETE FROM SLCustomerShipToRegion WHERE SLCSR_ShipToId = \'{0}\' AND SLCSR_CustomerId = \'{1}\'".format(ship_to_code, customer_no)
 		self._wrt_shipto_log(customer_no, ship_to_code,shipto_region_delete_query)
-		#print(shipto_region_delete_query)
-
 		self.db_conn.exec_query(shipto_region_delete_query, False)
-		'''
-		for i in range(0, len(shipto_regions)): 
-			shipto_region_insert_query = "INSERT INTO SLCustomerShipToRegion" \
-			" VALUES  (\'{0}\',\'{1}\',\'{2}\',\'{3}\',\'{4}\',{5},{6},{7})".format(corporate_id, company_id, division_id, customer_no, ship_to_code, shipto_regions[i][3], shipto_regions[i][4], shipto_regions[i][5])
-			print(shipto_region_insert_query)
-			#self.db_conn.exec_query(shipto_region_insert_query)
-		'''
+
 		shipto_region_insert_query = "INSERT INTO SLCustomerShipToRegion" \
 			" VALUES  (\'{0}\',\'{1}\',\'{2}\',\'{3}\',\'{4}\',{5},{6},{7})".format(corporate_id, company_id, division_id, customer_no, ship_to_code, inactive_region, inactive_territory, 1)
-		#print(shipto_region_insert_query)
 		self._wrt_shipto_log(customer_no, ship_to_code,shipto_region_insert_query)
 		self.db_conn.exec_query(shipto_region_insert_query,False)
 		#deletes all rows that are associated with the shipto and customer id in SLCustomerShipToProductDefault 
@@ -162,7 +152,7 @@ m_test = Manager(db_conn)
 #h = m_test._insert_audit_trail( '001','000','000','ADMINISTRATOR',4,'','Modified 010099151 010099151TORD','')
 #customer_no, ship_to_code, corporate_id, company_id, division_id, user_id, module_id, s_datetime,inactive_region, inactive_territory = "010060010", "010060010HWY",  '001', "000", "000","ADMINISTRATOR",4,'', 8,34
 #h = m_test._deactivate_ship_to(customer_no, ship_to_code, corporate_id, company_id, division_id, user_id, module_id, s_datetime, inactive_region, inactive_territory)
-m_test.deactivate_ship_tos("ShipToLsttest.csv")
+m_test.deactivate_ship_tos("allshiptos.csv")
 m_test.db_conn.close_conn()
 
 #m_test._wrt_shipto_log(customer_no, ship_to_code, "testing")
