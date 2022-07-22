@@ -2,7 +2,8 @@ from Dictify import *
 from Dict_lst import *
 
 
-
+#Created to add the customerid and shiptocode columns into the Dict_lst object data at runtime
+#This was done because I didn't want us to be manually doing it excel.  
 
 def load_csv(fname):
 	f_data = Dict_lst(Dictify(fname).main())
