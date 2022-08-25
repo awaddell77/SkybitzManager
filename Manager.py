@@ -1,5 +1,5 @@
 from Dbase_man import Dbase_man
-import datetime
+import datetime, sys
 from datetime import timezone
 from loadJson import loadJson
 from Dict_lst import Dict_lst
@@ -156,3 +156,13 @@ m_test.deactivate_ship_tos("allshiptos.csv")
 m_test.db_conn.close_conn()
 
 #m_test._wrt_shipto_log(customer_no, ship_to_code, "testing")
+
+if __name__ == "__main__":
+	if sys.argv[1] in ("?", "-h", "-?"): "Manager.py '[filename]'"
+	elif not sys.argv[1]: print("File Name Needed") 
+	else:
+		fname = sys.argv[1]
+		man_inst = Manager(conn_str)
+		man_inst.deactivate_ship_tos(fname)
+		m_inst.close_conn
+
