@@ -148,14 +148,11 @@ class Manager:
 
 
 db_conn = conn_str
-m_test = Manager(db_conn)
-#h = m_test._insert_audit_trail( '001','000','000','ADMINISTRATOR',4,'','Modified 010099151 010099151TORD','')
+#m_test = Manager(db_conn)
 #customer_no, ship_to_code, corporate_id, company_id, division_id, user_id, module_id, s_datetime,inactive_region, inactive_territory = "010060010", "010060010HWY",  '001', "000", "000","ADMINISTRATOR",4,'', 8,34
-#h = m_test._deactivate_ship_to(customer_no, ship_to_code, corporate_id, company_id, division_id, user_id, module_id, s_datetime, inactive_region, inactive_territory)
-m_test.deactivate_ship_tos("allshiptos.csv")
-m_test.db_conn.close_conn()
+#m_test.deactivate_ship_tos("allshiptos.csv")
+#m_test.db_conn.close_conn()
 
-#m_test._wrt_shipto_log(customer_no, ship_to_code, "testing")
 
 if __name__ == "__main__":
 	if sys.argv[1] in ("?", "-h", "-?"): "Manager.py '[filename]'"
@@ -164,5 +161,5 @@ if __name__ == "__main__":
 		fname = sys.argv[1]
 		man_inst = Manager(conn_str)
 		man_inst.deactivate_ship_tos(fname)
-		m_inst.close_conn
+		man_inst.db_conn.close_conn()
 
