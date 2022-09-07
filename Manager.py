@@ -139,7 +139,7 @@ class Manager:
 		return res
 	def _wrt_shipto_log(self, customer_no, ship_to_code, msg):
 		with open(self.log_fname, 'a') as sfile:
-			sfile.writelines(customer_no + '|' + ship_to_code +  '|' + msg + '\n')
+			sfile.write(customer_no + '|' + ship_to_code +  '|' + msg + '\n')
 
 
 
