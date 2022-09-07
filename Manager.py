@@ -33,8 +33,10 @@ class Manager:
 		ship_to_lst = sbcsv.load_csv(fname)
 		deact_col = "De-activated in skybitz?"
 		ship_to_lst.add_crit(deact_col,'')
+		inactive_city, inactive_zip = 'INACTIVE', 'INACTIVE'
 		for i in range(0,len(ship_to_lst)):
 			temp = ship_to_lst.get_index(i)
+			if not temp['ShipToZipCode'] or not temp['ShipToCity']: self._fix_city_zip(temp, inactive_city, inactive_zip)
 			res = self.db_conn.exec_query("SELECT SLCust_ShipToZip FROM SLCustomerShipTo WHERE  SLCust_ShipToId = \'{0}\' AND SLCust_ShipToZip IS NOT NULL AND SLCust_ShipToCity IS NOT NULL  ".format(temp['ShipToId']))
 			if not res: temp[deact_col] = "No. Could not be found"
 			else: 
@@ -105,6 +107,22 @@ class Manager:
 		#print(product_default_delete_query)
 		self._wrt_shipto_log(customer_no, ship_to_code,product_default_delete_query)
 		self.db_conn.exec_query(product_default_delete_query, False)
+
+	def _fix_city_zip(self, customer_ship_to_data, inactive_city, inactive_zip):
+		customer_no, ship_to_code = customer_ship_to_data['CustomerId'], customer_ship_to_data['ShipToId']
+		print("Cust: ", customer_no, "Shiptocode: ", "city: ", inactive_city, "zip: ", inactive_zip)
+		if customer_ship_to_data['ShipToZipCode'] and not customer_ship_to_data['ShipToCity']:
+			cmd = "UPDATE SLCustomerShipTo SET SLCust_ShipToCity = \'{0}\' WHERE SLCust_ShipToCustomerId = \'{1}\' and SLCust_ShipToId = \'{2}\'".format(inactive_city,customer_no,ship_to_code)
+		if not customer_ship_to_data['ShipToZipCode']	and customer_ship_to_data['ShipToCity']:
+			cmd = "UPDATE SLCustomerShipTo SET SLCust_ShipToZip = \'{0}\' WHERE SLCust_ShipToCustomerId = \'{1}\' and SLCust_ShipToId = \'{2}\'".format(inactive_zip,customer_no,ship_to_code)
+		if not customer_ship_to_data['ShipToCity'] and not customer_ship_to_data['ShipToZipCode']  :
+			cmd = "UPDATE SLCustomerShipTo SET SLCust_ShipToZip = \'{0}\', SLCust_ShipToCity = \'{1}\' WHERE SLCust_ShipToCustomerId = \'{2}\' and SLCust_ShipToId = \'{3}\'".format(inactive_zip,inactive_city, customer_no,ship_to_code)
+		#print(cmd)
+
+		self.db_conn.exec_query(cmd, False)
+
+
+
 
 
 	def _get_unique_products(self):
