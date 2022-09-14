@@ -3,7 +3,7 @@ import datetime, sys
 from datetime import timezone
 from loadJson import loadJson
 from Dict_lst import Dict_lst
-import Dictify, sbcsv
+import Dictify, sbcsv, time
 
 #in the future it will be a thread 
 creds = loadJson('credentials.json')
@@ -24,12 +24,15 @@ class Manager:
 		self.sess_time = datetime.datetime.now(timezone.utc).isoformat()
 		self.log_fname= self.sess_time.split('T')[0].replace('-','') + 'T'+ self.sess_time.split('T')[1].replace(':','-') + ".txt"
 		self.cust_list = []
+		self.log_time = 0.0
+		self.insertion_time = 0.0
 
 		
 
 	def run(self):
 		pass
 	def deactivate_ship_tos(self, fname):
+		s_time = time.time()
 		ship_to_lst = sbcsv.load_csv(fname)
 		deact_col = "De-activated in skybitz?"
 		ship_to_lst.add_crit(deact_col,'')
@@ -43,6 +46,9 @@ class Manager:
 				customer_no, ship_to_code, corporate_id, company_id, division_id, user_id, module_id, s_datetime,inactive_region, inactive_territory = temp['CustomerId'], temp['ShipToId'],  '001', "000", "000","ADMINISTRATOR",4,'', 9,35
 				self._deactivate_ship_to(customer_no, ship_to_code, corporate_id, company_id, division_id, user_id, module_id, s_datetime, inactive_region, inactive_territory)
 		ship_to_lst.export()
+		print("Completed in {0:.3f} minutes".format((time.time() - s_time)/60))
+		print("Logging took {0:.3f} minutes ({1:.3f} seconds)".format(self.log_time/60, self.log_time))
+		print("Insertion took {0:.3f} minutes)".format(self.insertion_time))
 		#print(ship_to_lst)
 
 
@@ -74,22 +80,25 @@ class Manager:
 		#print(product_tax_fee_deletion_query)
 		#adds rows to SLCustomerShipToProductTaxFee with null taxfeeprofileid values
 		products = self._get_unique_products()
+		insertion_time = time.time()
 		for i in range(0, len(products)):
 			product_q = "INSERT into SLCustomerShipToProductTaxFee ( SLSPTF_CorporateId, SLSPTF_CompanyId, SLSPTF_DivisionId, SLSPTF_CustomerId, SLSPTF_ShipToId, SLSPTF_ProductId, SLSPTF_TaxFeeProfileId ) " \
 			" VALUES ( \'{0}\', \'{1}\', \'{2}\', \'{3}\', \'{4}\', \'{5}\', null )".format(corporate_id, company_id, division_id, customer_no, ship_to_code, products[i] )
 			self._wrt_shipto_log(customer_no, ship_to_code, product_q)
 			self.db_conn.exec_query(product_q, False)
+		self.insertion_time += time.time() - insertion_time
 		#deletes all associated records in the SLCustomerShipToProductPrice  
 		prod_price_delete_query = "DELETE FROM SLCustomerShipToProductPrice WHERE SLSPP_ShipToId = \'{0}\' AND SLSPP_CustomerID = \'{1}\'".format(ship_to_code, customer_no)
 		
 		self._wrt_shipto_log(customer_no, ship_to_code,prod_price_delete_query)
 		self.db_conn.exec_query(prod_price_delete_query, False)
-
+		insertion_time = time.time()
 		#inserts new productprice rows with null values
 		for i in range(0, len(products)):
 			prod_price_insert_q = "INSERT INTO SLCustomerShipToProductPrice VALUES (\'{0}\',\'{1}\',\'{2}\',\'{3}\',\'{4}\',\'{5}\',NULL,0.0000,0.00)".format(corporate_id, company_id, division_id, ship_to_code, customer_no, products[i])
 			self._wrt_shipto_log(customer_no, ship_to_code,prod_price_insert_q)
 			self.db_conn.exec_query(prod_price_insert_q, False)
+		self.insertion_time += time.time() - insertion_time
 			
 		#get shiptoregions
 		shipto_regions = self._get_cust_shipto_regions(customer_no, ship_to_code)
@@ -110,7 +119,7 @@ class Manager:
 
 	def _fix_city_zip(self, customer_ship_to_data, inactive_city, inactive_zip):
 		customer_no, ship_to_code = customer_ship_to_data['CustomerId'], customer_ship_to_data['ShipToId']
-		print("Cust: ", customer_no, "Shiptocode: ", "city: ", inactive_city, "zip: ", inactive_zip)
+		print("Cust: ", customer_no, "Shiptocode: ", ship_to_code, " city: ", inactive_city, "zip: ", inactive_zip)
 		if customer_ship_to_data['ShipToZipCode'] and not customer_ship_to_data['ShipToCity']:
 			cmd = "UPDATE SLCustomerShipTo SET SLCust_ShipToCity = \'{0}\' WHERE SLCust_ShipToCustomerId = \'{1}\' and SLCust_ShipToId = \'{2}\'".format(inactive_city,customer_no,ship_to_code)
 		if not customer_ship_to_data['ShipToZipCode']	and customer_ship_to_data['ShipToCity']:
@@ -138,8 +147,11 @@ class Manager:
 		res= self.db_conn.exec_query(cmd)
 		return res
 	def _wrt_shipto_log(self, customer_no, ship_to_code, msg):
+		start_time = time.time()
 		with open(self.log_fname, 'a') as sfile:
 			sfile.write(customer_no + '|' + ship_to_code +  '|' + msg + '\n')
+
+		self.log_time += time.time() - start_time
 
 
 
